@@ -1,0 +1,77 @@
+<!-- TodoListApi 專案檔案 -->
+<!-- 定義專案的建構設定、目標框架和相依套件 -->
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- 專案屬性設定 -->
+  <PropertyGroup>
+    <!-- 指定目標框架為 .NET 8.0 -->
+    <!-- 這是目前最新的長期支援版本，提供最佳的效能和功能 -->
+    <TargetFramework>net8.0</TargetFramework>
+    
+    <!-- 啟用可為 null 的參考型別功能 -->
+    <!-- 這有助於在編譯時期發現潛在的 null 參考錯誤 -->
+    <Nullable>enable</Nullable>
+    
+    <!-- 啟用隱含的 using 指示詞 -->
+    <!-- 自動匯入常用的命名空間，減少重複的 using 陳述式 -->
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!-- NuGet 套件相依性 -->
+  <ItemGroup>
+    <!-- Entity Framework Core 套件群組 -->
+    <!-- 提供 ORM (物件關聯對應) 功能，簡化資料庫操作 -->
+    
+    <!-- Entity Framework Core 核心套件 -->
+    <!-- 版本 9.0.0 是最新版本，提供更好的效能和新功能 -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.0" />
+    
+    <!-- Entity Framework Core 設計工具 -->
+    <!-- 提供遷移 (Migration) 和資料庫更新功能 -->
+    <!-- IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" -->
+    <!-- PrivateAssets="all" 表示此套件僅在開發時使用，不會包含在最終的發佈版本中 -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    
+    <!-- PostgreSQL 資料庫提供者 -->
+    <!-- Npgsql 是 .NET 的 PostgreSQL 資料庫驅動程式 -->
+    <!-- 提供 Entity Framework Core 與 PostgreSQL 的整合 -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.0" />
+
+    <!-- JWT 身份驗證相關套件 -->
+    <!-- 用於處理 JSON Web Token 的產生、驗證和管理 -->
+    
+    <!-- Microsoft JWT 處理核心套件 -->
+    <!-- 提供 JWT 權杖的建立、解析和驗證功能 -->
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.1.2" />
+    
+    <!-- JWT 安全權杖處理套件 -->
+    <!-- 提供完整的 JWT 權杖處理功能，包括簽名和驗證 -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.1.2" />
+    
+    <!-- ASP.NET Core JWT Bearer 驗證中間件 -->
+    <!-- 提供在 ASP.NET Core 中處理 JWT Bearer 權杖的中間件 -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.11" />
+
+    <!-- 密碼雜湊相關套件 -->
+    <!-- 用於安全地處理用戶密碼的雜湊和驗證 -->
+    
+    <!-- BCrypt.NET 密碼雜湊套件 -->
+    <!-- 提供 BCrypt 演算法進行密碼雜湊，是業界標準的安全密碼處理方式 -->
+    <!-- BCrypt 具有自適應特性，可隨硬體效能調整運算複雜度 -->
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+
+    <!-- API 文件和開發工具 -->
+    
+    <!-- ASP.NET Core OpenAPI 支援套件 -->
+    <!-- 提供 WithOpenApi 擴充方法和 OpenAPI 規格生成功能 -->
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.11" />
+    
+    <!-- Swagger 和 OpenAPI 文件產生 -->
+    <!-- 自動產生互動式 API 文件，方便開發和測試 -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
+  </ItemGroup>
+
+</Project>

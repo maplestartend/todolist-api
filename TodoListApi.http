@@ -1,0 +1,667 @@
+# TodoListApi 多用戶 HTTP 測試檔案
+# 此檔案包含所有 API 端點的測試請求範例，包括身份驗證功能
+# 可在 Visual Studio Code (安裝 REST Client 擴充功能) 或 Visual Studio 2022 中執行
+
+# 設定 API 基礎位址變數
+# 開發環境預設使用 http://localhost:5000
+# 生產環境使用 Azure App Service URL
+@TodoListApi_HostAddress = https://todolistapi-d3gzb9dkcvfshncn.eastasia-01.azurewebsites.net
+
+# 存取權杖變數 (登入後從回應中複製)
+# 格式：Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+@AccessToken = Bearer YOUR_JWT_TOKEN_HERE
+
+# 測試用的 UUID 變數 (請替換為實際存在的 UUID)
+@TestTodoId = 12345678-1234-1234-1234-123456789abc
+@TestUserId = 12345678-1234-1234-1234-123456789abc
+
+###############################################################################
+# 身份驗證相關操作 (Authentication Operations)
+###############################################################################
+
+# POST /auth/register - 用戶註冊
+# 功能：建立新的用戶帳號，只使用電子郵件作為登入帳號
+# 測試案例：註冊一個新用戶
+# 預期回應：201 Created，包含用戶基本資訊
+POST {{TodoListApi_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "TestPassword123",
+  "displayName": "測試用戶"
+}
+
+###
+
+# POST /auth/register - 註冊第二個用戶
+# 功能：建立另一個用戶帳號以測試多用戶功能
+POST {{TodoListApi_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "password": "AlicePassword123",
+  "displayName": "Alice Wang"
+}
+
+###
+
+# POST /auth/register - 註冊第三個用戶
+# 功能：測試多個不同電子郵件的註冊
+# 測試案例：使用不同電子郵件註冊
+# 預期回應：201 Created，註冊成功
+POST {{TodoListApi_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "newuser@example.com",
+  "password": "NewPassword123",
+  "displayName": "新用戶"
+}
+
+###
+
+# POST /auth/register - 測試電子郵件已存在
+# 功能：測試電子郵件重複時的詳細錯誤訊息
+# 測試案例：使用已存在的電子郵件註冊
+# 預期回應：409 Conflict，錯誤訊息："電子郵件已存在"
+POST {{TodoListApi_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "NewPassword123",
+  "displayName": "新用戶2"
+}
+
+###
+
+# POST /auth/register - 測試重複電子郵件（再次確認）
+# 功能：測試電子郵件重複時的錯誤訊息
+# 測試案例：使用已存在的電子郵件註冊
+# 預期回應：409 Conflict，錯誤訊息："電子郵件已存在"
+POST {{TodoListApi_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "NewPassword123",
+  "displayName": "重複郵件用戶"
+}
+
+###
+
+# POST /auth/register - 測試空白欄位驗證
+# 功能：測試必填欄位驗證
+# 測試案例：提供空白的電子郵件和密碼
+# 預期回應：400 Bad Request，錯誤訊息："電子郵件和密碼為必填欄位"
+POST {{TodoListApi_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "",
+  "password": "",
+  "displayName": "測試"
+}
+
+###
+
+# POST /auth/login - 用戶登入
+# 功能：驗證用戶身份並取得 JWT 存取權杖
+# 測試案例：使用註冊的電子郵件帳號登入
+# 注意：現在只支援電子郵件登入
+# 預期回應：200 OK，包含用戶資訊和 JWT 權杖
+# 重要：請複製回應中的 accessToken 並更新上方的 @AccessToken 變數
+POST {{TodoListApi_HostAddress}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "TestPassword123"
+}
+
+###
+
+# POST /auth/login - 第二個用戶登入
+POST {{TodoListApi_HostAddress}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "alice@example.com",
+  "password": "AlicePassword123"
+}
+
+###
+
+# GET /auth/me - 取得當前用戶資訊
+# 功能：取得目前登入用戶的基本資訊
+# 測試案例：驗證 JWT 權杖並返回用戶資料
+# 預期回應：200 OK，包含當前用戶資訊
+# 注意：需要在 Authorization 標頭中提供有效的 JWT 權杖
+GET {{TodoListApi_HostAddress}}/auth/me
+Authorization: {{AccessToken}}
+
+###
+
+###############################################################################
+# 忘記密碼功能測試 (Password Reset Testing)
+###############################################################################
+
+# POST /auth/forgot-password - 忘記密碼，發送重設郵件
+# 功能：向指定電子郵件發送密碼重設連結
+# 測試案例：請求重設密碼
+# 預期回應：200 OK，確認郵件已發送
+POST {{TodoListApi_HostAddress}}/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "test@example.com"
+}
+
+###
+
+# POST /auth/reset-password - 重設密碼
+# 功能：使用重設 Token 更新密碼
+# 測試案例：重設用戶密碼
+# 預期回應：200 OK，密碼重設成功
+# 注意：Token 從重設郵件中獲取，有效期 1 小時
+POST {{TodoListApi_HostAddress}}/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "YOUR_RESET_TOKEN_HERE_FROM_EMAIL",
+  "email": "test@example.com",
+  "newPassword": "newSecurePassword123"
+}
+
+###
+
+# 測試案例：使用無效的重設 Token
+# 預期回應：400 Bad Request
+POST {{TodoListApi_HostAddress}}/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "invalid_token",
+  "email": "test@example.com",
+  "newPassword": "newPassword123"
+}
+
+###
+
+# 測試案例：忘記密碼請求 - 不存在的用戶
+# 功能：測試對不存在用戶的忘記密碼請求
+# 預期回應：200 OK (為了安全，不透露用戶是否存在)
+POST {{TodoListApi_HostAddress}}/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "nonexistent@example.com"
+}
+
+###
+
+###############################################################################
+# 用戶資料更新功能測試 (User Profile Update Testing)
+###############################################################################
+
+# PUT /auth/profile - 更新用戶基本資料（電子郵件和暱稱）
+# 功能：更新當前用戶的電子郵件和顯示名稱
+# 測試案例：同時更新電子郵件和顯示名稱
+# 預期回應：200 OK，包含更新後的用戶資訊
+# 注意：需要在 Authorization 標頭中提供有效的 JWT 權杖
+PUT {{TodoListApi_HostAddress}}/auth/profile
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "email": "newemail@example.com",
+  "displayName": "更新後的顯示名稱"
+}
+
+###
+
+# PUT /auth/profile - 只更新顯示名稱
+# 功能：只更新顯示名稱，不更改電子郵件
+# 測試案例：部分更新用戶資料
+# 預期回應：200 OK
+PUT {{TodoListApi_HostAddress}}/auth/profile
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "displayName": "新的顯示名稱"
+}
+
+###
+
+# PUT /auth/profile - 只更新電子郵件
+# 功能：只更新電子郵件地址
+# 測試案例：單一欄位更新
+# 預期回應：200 OK
+PUT {{TodoListApi_HostAddress}}/auth/profile
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "email": "updatedemail@example.com"
+}
+
+###
+
+# PUT /auth/profile - 測試電子郵件已存在
+# 功能：測試更新為已存在的電子郵件時的錯誤處理
+# 測試案例：驗證電子郵件唯一性
+# 預期回應：400 Bad Request，錯誤訊息："該電子郵件地址已被其他用戶使用"
+# 注意：需要先有其他用戶使用 "alice@example.com" 這個電子郵件
+PUT {{TodoListApi_HostAddress}}/auth/profile
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "email": "alice@example.com"
+}
+
+###
+
+# PUT /auth/profile - 測試清空顯示名稱
+# 功能：測試將顯示名稱設為空值
+# 測試案例：清空顯示名稱
+# 預期回應：200 OK
+PUT {{TodoListApi_HostAddress}}/auth/profile
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "displayName": ""
+}
+
+###
+
+# PUT /auth/profile - 測試無效的電子郵件格式
+# 功能：測試電子郵件格式驗證
+# 測試案例：提供無效的電子郵件格式
+# 預期回應：400 Bad Request，包含驗證錯誤
+PUT {{TodoListApi_HostAddress}}/auth/profile
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "email": "invalid-email-format"
+}
+
+###
+
+# PUT /auth/profile - 測試未授權訪問
+# 功能：測試未提供 JWT 權杖時的回應
+# 測試案例：未授權更新嘗試
+# 預期回應：401 Unauthorized
+PUT {{TodoListApi_HostAddress}}/auth/profile
+Content-Type: application/json
+
+{
+  "displayName": "嘗試未授權更新"
+}
+
+###
+
+###############################################################################
+# 密碼更換功能測試 (Password Change Testing)
+###############################################################################
+
+# PUT /auth/change-password - 更換密碼
+# 功能：更換當前用戶的密碼，需要驗證目前密碼
+# 測試案例：正常的密碼更換
+# 預期回應：200 OK，密碼更換成功
+# 注意：需要在 Authorization 標頭中提供有效的 JWT 權杖
+PUT {{TodoListApi_HostAddress}}/auth/change-password
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "TestPassword123",
+  "newPassword": "NewPassword123"
+}
+
+###
+
+# PUT /auth/change-password - 測試錯誤的目前密碼
+# 功能：提供錯誤的目前密碼時的錯誤處理
+# 測試案例：驗證密碼保護機制
+# 預期回應：400 Bad Request，錯誤訊息："目前密碼不正確"
+PUT {{TodoListApi_HostAddress}}/auth/change-password
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "WrongPassword",
+  "newPassword": "SomeNewPassword123"
+}
+
+###
+
+# PUT /auth/change-password - 測試新密碼與目前密碼相同
+# 功能：測試新密碼與目前密碼相同時的錯誤處理
+# 測試案例：驗證密碼不能重複使用
+# 預期回應：400 Bad Request，錯誤訊息："新密碼不能與目前密碼相同"
+PUT {{TodoListApi_HostAddress}}/auth/change-password
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "TestPassword123",
+  "newPassword": "TestPassword123"
+}
+
+###
+
+# PUT /auth/change-password - 測試空白密碼欄位
+# 功能：測試必填欄位驗證
+# 測試案例：提供空白的密碼欄位
+# 預期回應：400 Bad Request，包含驗證錯誤
+PUT {{TodoListApi_HostAddress}}/auth/change-password
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "",
+  "newPassword": ""
+}
+
+###
+
+# PUT /auth/change-password - 測試新密碼長度不足
+# 功能：測試新密碼長度驗證
+# 測試案例：提供過短的新密碼
+# 預期回應：400 Bad Request，包含驗證錯誤
+PUT {{TodoListApi_HostAddress}}/auth/change-password
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "TestPassword123",
+  "newPassword": "123"
+}
+
+###
+
+# PUT /auth/change-password - 測試未授權訪問
+# 功能：測試未提供 JWT 權杖時的回應
+# 測試案例：未授權密碼更換嘗試
+# 預期回應：401 Unauthorized
+PUT {{TodoListApi_HostAddress}}/auth/change-password
+Content-Type: application/json
+
+{
+  "currentPassword": "TestPassword123",
+  "newPassword": "NewPassword123"
+}
+
+###
+
+###############################################################################
+# 待辦事項相關操作 (Todo Operations) - 需要身份驗證
+###############################################################################
+
+# GET /todos - 取得當前用戶的所有待辦事項
+# 功能：返回當前登入用戶的待辦事項清單
+# 測試案例：查詢用戶專屬的待辦事項
+# 預期回應：200 OK，只包含當前用戶的待辦事項
+GET {{TodoListApi_HostAddress}}/todos
+Authorization: {{AccessToken}}
+
+###
+
+# GET /todos/statistics - 取得當前用戶的統計資訊
+# 功能：返回待辦事項統計數據
+# 測試案例：查看用戶的完成率和統計
+# 預期回應：200 OK，包含統計資訊
+GET {{TodoListApi_HostAddress}}/todos/statistics
+Authorization: {{AccessToken}}
+
+###
+
+# GET /todos/completed - 取得當前用戶的已完成待辦事項
+# 功能：只返回已完成的待辦事項
+GET {{TodoListApi_HostAddress}}/todos/completed
+Authorization: {{AccessToken}}
+
+###
+
+# GET /todos/pending - 取得當前用戶的未完成待辦事項
+# 功能：只返回未完成的待辦事項
+GET {{TodoListApi_HostAddress}}/todos/pending
+Authorization: {{AccessToken}}
+
+###
+
+# POST /todos - 為當前用戶建立新的待辦事項
+# 功能：建立新的待辦事項，自動歸屬於當前用戶
+# 測試案例：新增一個待辦事項
+# 預期回應：201 Created，包含新建立的待辦事項資料
+POST {{TodoListApi_HostAddress}}/todos
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "title": "學習多用戶身份驗證",
+  "description": "深入了解 JWT 和 ASP.NET Core 身份驗證機制"
+}
+
+###
+
+# POST /todos - 建立第二個待辦事項
+POST {{TodoListApi_HostAddress}}/todos
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "title": "實作資料隔離",
+  "description": "確保每個用戶只能存取自己的資料"
+}
+
+###
+
+# GET /todos/{id} - 取得特定待辦事項
+# 功能：根據 UUID 取得待辦事項詳細資訊
+# 測試案例：查詢指定的待辦事項
+# 預期回應：200 OK (如果屬於當前用戶) 或 404 Not Found
+# 注意：請將下方的 UUID 替換為實際存在的 UUID
+GET {{TodoListApi_HostAddress}}/todos/{{TestTodoId}}
+Authorization: {{AccessToken}}
+
+###
+
+# PUT /todos/{id} - 更新待辦事項
+# 功能：更新現有待辦事項的資訊
+# 測試案例：修改待辦事項的標題和描述
+# 預期回應：200 OK (如果更新成功) 或 404 Not Found
+PUT {{TodoListApi_HostAddress}}/todos/{{TestTodoId}}
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "title": "學習多用戶身份驗證 (已更新)",
+  "description": "深入了解 JWT、BCrypt 和 ASP.NET Core 身份驗證機制",
+  "isCompleted": false
+}
+
+###
+
+# PATCH /todos/{id}/toggle - 切換完成狀態
+# 功能：在完成/未完成狀態之間切換
+# 測試案例：切換待辦事項的完成狀態
+# 預期回應：200 OK (包含更新後的資料) 或 404 Not Found
+PATCH {{TodoListApi_HostAddress}}/todos/{{TestTodoId}}/toggle
+Authorization: {{AccessToken}}
+
+###
+
+# DELETE /todos/{id} - 刪除待辦事項
+# 功能：永久刪除指定的待辦事項
+# 測試案例：刪除待辦事項
+# 預期回應：204 No Content (如果刪除成功) 或 404 Not Found
+DELETE {{TodoListApi_HostAddress}}/todos/{{TestTodoId}}
+Authorization: {{AccessToken}}
+
+###
+
+###############################################################################
+# 多用戶功能測試案例
+###############################################################################
+
+# 測試案例：未授權訪問
+# 功能：測試未提供 JWT 權杖時的回應
+# 預期回應：401 Unauthorized
+GET {{TodoListApi_HostAddress}}/todos
+
+###
+
+# 測試案例：無效權杖
+# 功能：測試提供無效 JWT 權杖時的回應
+# 預期回應：401 Unauthorized
+GET {{TodoListApi_HostAddress}}/todos
+Authorization: Bearer invalid_jwt_token_here
+
+###
+
+# 測試案例：過期權杖
+# 功能：測試使用過期的 JWT 權杖
+# 預期回應：401 Unauthorized
+GET {{TodoListApi_HostAddress}}/todos
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.expired_token_example
+
+###
+
+###############################################################################
+# 數據隔離測試
+###############################################################################
+
+# 說明：
+# 1. 使用不同用戶帳號註冊和登入
+# 2. 每個用戶建立自己的待辦事項
+# 3. 驗證用戶 A 無法存取用戶 B 的待辦事項
+# 4. 確認每個用戶只能看到自己的資料
+
+###############################################################################
+# 壓力測試案例
+###############################################################################
+
+# 建立多個待辦事項來測試功能
+# 測試案例：批量建立待辦事項
+POST {{TodoListApi_HostAddress}}/todos
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "title": "待辦事項 1",
+  "description": "這是第一個測試待辦事項"
+}
+
+###
+
+POST {{TodoListApi_HostAddress}}/todos
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "title": "待辦事項 2",
+  "description": "這是第二個測試待辦事項"
+}
+
+###
+
+POST {{TodoListApi_HostAddress}}/todos
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "title": "待辦事項 3",
+  "description": "這是第三個測試待辦事項"
+}
+
+###
+
+###############################################################################
+# 錯誤處理測試案例
+###############################################################################
+
+# 測試案例：重複註冊相同用戶名稱
+# 預期回應：409 Conflict
+POST {{TodoListApi_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "duplicate@example.com",
+  "password": "TestPassword123"
+}
+
+###
+
+# 測試案例：重複註冊相同電子郵件
+# 預期回應：409 Conflict
+POST {{TodoListApi_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "TestPassword123",
+  "displayName": "測試用戶"
+}
+
+###
+
+# 測試案例：重複註冊相同電子郵件
+# 預期回應：409 Conflict
+POST {{TodoListApi_HostAddress}}/auth/register
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "TestPassword123",
+  "displayName": "另一個測試用戶"
+}
+
+###
+
+# 測試案例：錯誤的登入資料
+# 預期回應：401 Unauthorized
+POST {{TodoListApi_HostAddress}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "testuser@example.com",
+  "password": "WrongPassword"
+}
+
+###
+
+# 測試案例：建立空標題的待辦事項
+# 預期回應：400 Bad Request
+POST {{TodoListApi_HostAddress}}/todos
+Authorization: {{AccessToken}}
+Content-Type: application/json
+
+{
+  "title": "",
+  "description": "這個待辦事項沒有標題"
+}
+
+###
+
+###############################################################################
+# 使用指引
+###############################################################################
+# 1. 確保 API 服務正在運行 (通常是 http://localhost:5000)
+# 2. 按順序執行以下步驟：
+#    a. 執行用戶註冊 (POST /auth/register)
+#    b. 執行用戶登入 (POST /auth/login)
+#    c. 複製回應中的 accessToken
+#    d. 更新上方的 @AccessToken 變數
+#    e. 執行其他需要身份驗證的 API 請求
+# 3. 注意觀察不同用戶之間的資料隔離
+# 4. 測試各種錯誤情況和邊界條件
+# 5. JWT 權杖預設 24 小時過期，過期後需要重新登入
+# 6. 所有的待辦事項操作都需要有效的 JWT 權杖
+############################################################################### 
