@@ -1,8 +1,8 @@
-# TodoListApi - 全端待辦事項管理系統
+# TodoList - 全端待辦事項管理系統
 
 ## 🚀 線上演示
 
-**🌐 線上應用程式**: [TodoList API 在 Azure](https://todolistapi-d3gzb9dkcvfshncn.eastasia-01.azurewebsites.net/)
+**🌐 線上應用程式**: [TodoList API 在 Azure](https://todolistapi-d3gzb9dkcvfshncn.eastasia-01.azurewebsites.net/)  
 **📊 專案狀態**: ✅ 已部署到 Azure App Service  
 **💾 資料庫**: ✅ Supabase PostgreSQL  
 **🔄 CI/CD**: ✅ GitHub Actions 自動化部署
@@ -11,245 +11,190 @@
 
 ---
 
-## 專案簡介
+## 📖 專案簡介
 
-這是一個完整的全端待辦事項管理系統，包含：
+這是一個現代化的全端待辦事項管理系統，展示了完整的軟體開發流程，從程式設計到雲端部署。
 
-- **後端 API**：使用 **ASP.NET Core 8.0** 和 **PostgreSQL** 建構的 RESTful API
-- **前端應用**：使用 **React 18** + **TypeScript** + **Vite** 建構的現代化 SPA 應用
+### ✨ 主要特色
 
-專案採用 **分離式架構**，後端提供 API 服務，前端提供用戶介面，支援完整的用戶認證、待辦事項管理和用戶設定功能。
+- 🔐 **完整用戶認證系統** - 註冊、登入、密碼重設
+- 📝 **待辦事項管理** - CRUD 操作、狀態切換
+- 👤 **用戶資料管理** - 個人資料更新、密碼變更
+- 🔒 **安全性** - JWT 認證、密碼雜湊、資料隔離
+- 📧 **郵件服務** - 密碼重設郵件通知
 
-## 專案架構
-
-### 整體架構
-
-```
-專案根目錄/
-├── TodoListApi/                 # 後端 API 專案
-│   ├── Program.cs              # API 進入點
-│   ├── Models/                 # 資料模型
-│   ├── Services/               # 業務邏輯服務
-│   ├── Data/                   # 資料存取層
-│   └── Migrations/             # 資料庫遷移
-└── todolist-frontend/          # 前端 React 專案
-    ├── src/
-    │   ├── components/         # React 組件
-    │   ├── contexts/           # React Context
-    │   ├── services/           # API 服務
-    │   ├── types/              # TypeScript 類型定義
-    │   └── App.tsx             # 前端應用進入點
-    ├── public/                 # 靜態資源
-    └── package.json            # 前端依賴管理
-```
-
-## 技術架構
+## 🛠️ 技術架構
 
 ### 後端技術棧
 
-- **.NET 8.0** - 最新的 .NET 框架
-- **ASP.NET Core** - Web API 框架
-- **Entity Framework Core 9.0** - ORM 資料存取框架
+- **ASP.NET Core 8.0** - Web API 框架
+- **Entity Framework Core** - ORM 資料存取
 - **PostgreSQL** - 關聯式資料庫
-- **Npgsql** - PostgreSQL 的 .NET 資料提供者
-- **BCrypt** - 密碼雜湊加密
-- **JWT** - JSON Web Token 身份驗證
+- **JWT** - 身份驗證
+- **BCrypt** - 密碼加密
 - **MailKit** - 郵件服務
-- **Swagger/OpenAPI** - API 文件生成
 
-### 前端技術棧
+### DevOps 工具鏈
 
-- **React 18** - 現代化前端框架
-- **TypeScript** - 型別安全的 JavaScript
-- **Vite** - 快速建構工具
-- **React Router** - 前端路由管理
-- **Context API** - 全域狀態管理
-- **CSS3** - 現代化樣式設計
-- **玻璃擬態設計** - 現代化 UI 風格
-- **響應式設計** - 支援各種螢幕尺寸
+- **Docker** - 容器化部署
+- **GitHub Actions** - CI/CD 自動化
+- **Azure App Service** - 雲端託管
+- **Supabase** - 雲端資料庫
 
-### 後端專案結構
+## 🏗️ 專案結構
 
 ```
 TodoListApi/
-├── Program.cs                    # 應用程式進入點，設定服務和中間件
-├── TodoListApi.csproj           # 專案檔案，定義依賴套件
-├── appsettings.json             # 主要設定檔（包含資料庫連線字串）
-├── appsettings.Development.json # 開發環境設定檔
-├── appsettings.Production.json  # 生產環境設定檔
-├── appsettings.Staging.json     # 測試環境設定檔
-├── Models/                      # 資料模型層
-│   ├── TodoItem.cs             # 待辦事項實體和請求/回應模型
-│   └── User.cs                 # 用戶實體和認證相關模型
-├── Data/                        # 資料存取層
-│   └── TodoDbContext.cs        # Entity Framework 資料庫上下文
-├── Services/                    # 業務邏輯層
-│   ├── ITodoService.cs         # 待辦事項服務介面
-│   ├── TodoService.cs          # 待辦事項服務實作
-│   ├── IUserService.cs         # 用戶服務介面
-│   ├── UserService.cs          # 用戶服務實作
-│   ├── IEmailService.cs        # 郵件服務介面
-│   └── EmailService.cs         # 郵件服務實作
-├── Migrations/                  # Entity Framework 資料庫遷移檔案
-├── TodoListApi.http            # API 測試檔案
-└── README.md                   # 專案說明文件
+├── Models/              # 資料模型
+├── Services/            # 業務邏輯服務
+├── Data/                # 資料存取層
+├── Migrations/          # 資料庫遷移
+├── .github/workflows/   # GitHub Actions CI/CD
+├── Dockerfile           # Docker 容器配置
+├── docker-compose.yml   # 服務編排
+└── README.md           # 專案說明
 ```
 
-### 前端專案結構
+## 🚀 快速開始
 
-```
-todolist-frontend/
-├── src/
-│   ├── components/             # React 組件
-│   │   ├── AppRouter.tsx      # 路由配置
-│   │   ├── LoginPage.tsx      # 登入頁面
-│   │   ├── ForgotPasswordPage.tsx # 忘記密碼頁面
-│   │   ├── ResetPasswordPage.tsx  # 重設密碼頁面
-│   │   ├── TodoApp.tsx        # 主要待辦事項應用
-│   │   ├── UserHeader.tsx     # 用戶標頭組件
-│   │   ├── UserSettingsPage.tsx # 用戶設定頁面
-│   │   └── *.css              # 組件樣式檔案
-│   ├── contexts/              # React Context
-│   │   └── AuthContext.tsx    # 認證狀態管理
-│   ├── services/              # API 服務
-│   │   └── authService.ts     # 認證相關 API 服務
-│   ├── types/                 # TypeScript 類型定義
-│   │   └── auth.ts            # 認證相關類型
-│   ├── App.tsx                # 主應用組件
-│   ├── App.css                # 全域樣式
-│   └── main.tsx               # 應用進入點
-├── public/                     # 靜態資源
-├── package.json               # 依賴管理
-├── tsconfig.json              # TypeScript 配置
-├── vite.config.ts             # Vite 建構配置
-└── README_Frontend.md         # 前端專案說明
-```
+### 前置需求
 
-### 設計模式與架構原則
+- .NET 8.0 SDK
+- PostgreSQL 或 Docker
+- Git
 
-1. **分層架構 (Layered Architecture)**
+### 本地開發設定
 
-   - **模型層 (Models)**: 定義資料結構和驗證規則
-   - **資料層 (Data)**: 處理資料庫操作和 Entity Framework 設定
-   - **服務層 (Services)**: 實作業務邏輯和資料操作
-   - **API 層 (Program.cs)**: 定義 HTTP 端點和請求處理
+1. **複製專案**
 
-2. **依賴注入 (Dependency Injection)**
+   ```bash
+   git clone https://github.com/maplestartend/todolist-api.git
+   cd todolist-api
+   ```
 
-   - 使用 ASP.NET Core 內建的 DI 容器
-   - 服務註冊使用 `Scoped` 生命週期
-   - 透過介面實現解耦和可測試性
+2. **啟動資料庫（使用 Docker）**
 
-3. **前後端分離 (Frontend-Backend Separation)**
+   ```bash
+   docker-compose -f docker-compose.dev.yml up -d
+   ```
 
-   - 後端專注於 API 服務和業務邏輯
-   - 前端專注於用戶介面和用戶體驗
-   - 透過 RESTful API 進行通訊
+3. **設定環境變數**
 
-4. **狀態管理 (State Management)**
-   - 使用 React Context API 管理全域狀態
-   - 認證狀態集中管理
-   - 本地存儲與伺服器狀態同步
+   ```bash
+   # 更新 appsettings.Development.json
+   {
+     "ConnectionStrings": {
+       "DefaultConnection": "Host=localhost;Port=5433;Database=todolist_dev;Username=postgres;Password=dev123"
+     }
+   }
+   ```
 
-## 功能特色
+4. **執行應用程式**
 
-### 🔐 完整的身份驗證系統
+   ```bash
+   dotnet restore
+   dotnet run
+   ```
 
-- ✅ 用戶註冊（電子郵件 + 密碼）
-- ✅ 用戶登入（JWT Token 認證）
-- ✅ 忘記密碼（郵件重設連結）
-- ✅ 密碼重設（安全 Token 驗證）
-- ✅ 自動登入狀態維護
-- ✅ 安全登出功能
+5. **測試 API**
+   - API 文件: `https://localhost:5001/swagger`
+   - 健康檢查: `https://localhost:5001/health`
 
-### 👤 用戶資料管理
+### Docker 部署
 
-- ✅ **基本資料更新**：修改電子郵件和暱稱
-- ✅ **密碼更換**：獨立的密碼更新功能
-- ✅ **資料驗證**：前後端雙重驗證
-- ✅ **即時更新**：修改後立即同步顯示
-- ✅ **安全檢查**：密碼更換需驗證舊密碼
+```bash
+# 建構並啟動所有服務
+docker-compose up -d
 
-### 📝 待辦事項管理
+# 查看服務狀態
+docker-compose ps
 
-- ✅ 完整的 CRUD 操作（建立、讀取、更新、刪除）
-- ✅ 待辦事項狀態切換（完成/未完成）
-- ✅ 用戶資料隔離（每個用戶只能存取自己的資料）
-- ✅ 即時狀態更新
-- ✅ 分類和篩選功能
-
-### 🎨 現代化用戶介面
-
-- ✅ **玻璃擬態設計**：半透明效果和模糊背景
-- ✅ **響應式佈局**：完美支援桌面和行動裝置
-- ✅ **平滑動畫**：載入、切換和互動動畫
-- ✅ **直觀導航**：清晰的頁面結構和導航
-- ✅ **即時回饋**：操作成功/失敗即時提示
-
-### 🛡️ 安全性功能
-
-- ✅ **密碼雜湊**：使用 BCrypt 安全加密
-- ✅ **JWT 認證**：安全的 Token 驗證機制
-- ✅ **HttpOnly Cookie**：防止 XSS 攻擊
-- ✅ **CORS 配置**：跨域請求安全控制
-- ✅ **輸入驗證**：前後端完整的資料驗證
-
-### 📧 郵件服務
-
-- ✅ **HTML 郵件**：美觀的郵件模板
-- ✅ **密碼重設**：安全的重設連結
-- ✅ **操作通知**：重要操作的郵件確認
-- ✅ **多環境支援**：開發/測試/生產環境配置
-
-## API 端點說明
-
-### 身份驗證端點
-
-#### 用戶註冊
-
-```http
-POST /auth/register
-Content-Type: application/json
-
-{
-  "email": "user@example.com",
-  "password": "securePassword123",
-  "displayName": "使用者名稱"
-}
+# 查看日誌
+docker-compose logs -f api
 ```
 
-#### 用戶登入
+## 📋 API 端點
 
-```http
-POST /auth/login
-Content-Type: application/json
+### 認證
 
-{
-  "email": "user@example.com",
-  "password": "securePassword123"
-}
+- `POST /auth/register` - 用戶註冊
+- `POST /auth/login` - 用戶登入
+- `POST /auth/forgot-password` - 忘記密碼
+- `POST /auth/reset-password` - 重設密碼
+- `PUT /auth/profile` - 更新個人資料
+- `PUT /auth/change-password` - 變更密碼
+
+### 待辦事項
+
+- `GET /todos` - 取得所有待辦事項
+- `POST /todos` - 建立新待辦事項
+- `PUT /todos/{id}` - 更新待辦事項
+- `PATCH /todos/{id}/toggle` - 切換完成狀態
+- `DELETE /todos/{id}` - 刪除待辦事項
+
+_詳細的 API 文件請參考 [Swagger UI](https://todolistapi-d3gzb9dkcvfshncn.eastasia-01.azurewebsites.net/swagger)_
+
+## 🔧 部署架構
+
+### 生產環境
+
+- **雲端平台**: Azure App Service
+- **資料庫**: Supabase PostgreSQL
+- **部署方式**: Visual Studio 發布 + GitHub Actions
+- **HTTPS**: 已啟用 SSL 憑證
+
+### 環境分離
+
+- **開發環境**: 本地 Docker + PostgreSQL
+- **生產環境**: Azure App Service + Supabase
+
+## 🤝 開發流程
+
+### Git 工作流程
+
+```bash
+# 功能開發
+git checkout -b feature/new-feature
+git commit -m "feat: add new feature"
+git push origin feature/new-feature
+
+# 建立 Pull Request
+# 合併後自動觸發 CI/CD
 ```
 
-#### 忘記密碼
+### CI/CD 自動化
 
-```http
-POST /auth/forgot-password
-Content-Type: application/json
+- ✅ 程式碼品質檢查
+- ✅ 自動化測試
+- ✅ Docker 映像檔建構
+- ✅ 自動部署到 Azure
 
-{
-  "email": "user@example.com"
-}
-```
+## 📚 學習重點
 
-#### 重設密碼
+這個專案展示了以下技能：
 
-```http
-POST /auth/reset-password
-Content-Type: application/json
+1. **後端開發**: ASP.NET Core Web API 開發
+2. **資料庫設計**: PostgreSQL 資料庫設計與 Entity Framework
+3. **認證授權**: JWT Token 實作
+4. **容器化**: Docker 和 Docker Compose
+5. **CI/CD**: GitHub Actions 自動化部署
+6. **雲端部署**: Azure 和 Supabase 整合
+7. **版本控制**: Git 和 GitHub 協作流程
 
-{
-  "token": "reset-token-from-email",
-  "email": "user@example.com",
-  "newPassword": "newSecurePassword123"
-}
-```
+## 🛡️ 安全性
+
+- JWT Token 認證機制
+- 密碼 BCrypt 雜湊加密
+- 用戶資料隔離
+- HTTPS 強制加密傳輸
+- 環境變數安全管理
+
+## 📄 授權
+
+此專案僅供學習和開發參考使用。
+
+---
+
+⭐ 如果這個專案對您有幫助，請考慮給個星星！
+
+📧 有問題或建議？歡迎開 [Issue](https://github.com/maplestartend/todolist-api/issues)
