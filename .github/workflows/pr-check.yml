@@ -1,0 +1,225 @@
+name: "Pull Request 檢查"
+
+# 觸發條件：當建立或更新 Pull Request 時
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+    types: [opened, synchronize, reopened]
+
+# 環境變數
+env:
+  DOTNET_VERSION: "8.0.x"
+
+jobs:
+  # PR 基本檢查
+  pr-validation:
+    name: "PR 驗證"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "檢出程式碼"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "檢查 PR 標題格式"
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          if [[ ! "$PR_TITLE" =~ ^(feat|fix|docs|style|refactor|perf|test|chore|ci)(\(.+\))?: .+ ]]; then
+            echo "❌ PR 標題格式不正確"
+            echo "正確格式：type(scope): description"
+            echo "例如：feat(api): add user authentication"
+            exit 1
+          else
+            echo "✅ PR 標題格式正確"
+          fi
+
+      - name: "檢查 PR 描述"
+        run: |
+          PR_BODY="${{ github.event.pull_request.body }}"
+          if [[ -z "$PR_BODY" || ${#PR_BODY} -lt 20 ]]; then
+            echo "❌ PR 描述太短或為空"
+            echo "請提供詳細的變更說明"
+            exit 1
+          else
+            echo "✅ PR 描述格式正確"
+          fi
+
+  # 程式碼檢查
+  code-review:
+    name: "程式碼審查"
+    runs-on: ubuntu-latest
+    needs: pr-validation
+
+    steps:
+      - name: "檢出程式碼"
+        uses: actions/checkout@v4
+
+      - name: "設定 .NET SDK"
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: "還原套件"
+        run: dotnet restore
+
+      - name: "程式碼格式檢查"
+        run: |
+          dotnet format --verify-no-changes --verbosity diagnostic
+          if [ $? -ne 0 ]; then
+            echo "❌ 程式碼格式不正確"
+            echo "請執行 'dotnet format' 修正格式"
+            exit 1
+          else
+            echo "✅ 程式碼格式正確"
+          fi
+
+      - name: "建構檢查"
+        run: |
+          dotnet build --no-restore --configuration Release
+          if [ $? -ne 0 ]; then
+            echo "❌ 建構失敗"
+            exit 1
+          else
+            echo "✅ 建構成功"
+          fi
+
+  # 測試檢查
+  test-check:
+    name: "測試檢查"
+    runs-on: ubuntu-latest
+    needs: code-review
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: test123
+          POSTGRES_DB: todolist_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: "檢出程式碼"
+        uses: actions/checkout@v4
+
+      - name: "設定 .NET SDK"
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: "還原套件"
+        run: dotnet restore
+
+      - name: "建構"
+        run: dotnet build --no-restore --configuration Release
+
+      - name: "執行測試"
+        run: |
+          dotnet test --no-build --configuration Release --logger "console;verbosity=detailed"
+          if [ $? -ne 0 ]; then
+            echo "❌ 測試失敗"
+            exit 1
+          else
+            echo "✅ 所有測試通過"
+          fi
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Database=todolist_test;Username=postgres;Password=test123"
+
+  # 變更檔案分析
+  changes-analysis:
+    name: "變更分析"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: "檢出程式碼"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "分析變更的檔案"
+        id: changes
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            api:
+              - '**/*.cs'
+              - '**/*.csproj'
+              - '**/appsettings*.json'
+            docker:
+              - 'Dockerfile'
+              - 'docker-compose*.yml'
+              - '.dockerignore'
+            ci:
+              - '.github/workflows/**'
+            docs:
+              - '**/*.md'
+
+      - name: "變更摘要"
+        run: |
+          echo "📋 變更摘要："
+          if [ "${{ steps.changes.outputs.api }}" == "true" ]; then
+            echo "🔧 API 程式碼變更"
+          fi
+          if [ "${{ steps.changes.outputs.docker }}" == "true" ]; then
+            echo "🐳 Docker 配置變更"
+          fi
+          if [ "${{ steps.changes.outputs.ci }}" == "true" ]; then
+            echo "⚡ CI/CD 配置變更"
+          fi
+          if [ "${{ steps.changes.outputs.docs }}" == "true" ]; then
+            echo "📚 文件變更"
+          fi
+
+  # PR 狀態報告
+  pr-summary:
+    name: "PR 總結報告"
+    runs-on: ubuntu-latest
+    needs: [pr-validation, code-review, test-check, changes-analysis]
+    if: always()
+
+    steps:
+      - name: "生成 PR 報告"
+        run: |
+          echo "## 🔍 Pull Request 檢查報告" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.pr-validation.result }}" == "success" ]; then
+            echo "✅ **PR 驗證**: 通過" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **PR 驗證**: 失敗" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.code-review.result }}" == "success" ]; then
+            echo "✅ **程式碼審查**: 通過" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **程式碼審查**: 失敗" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.test-check.result }}" == "success" ]; then
+            echo "✅ **測試檢查**: 通過" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **測試檢查**: 失敗" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [ "${{ needs.changes-analysis.result }}" == "success" ]; then
+            echo "✅ **變更分析**: 完成" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **變更分析**: 失敗" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 檢查項目" >> $GITHUB_STEP_SUMMARY
+          echo "- [x] PR 標題格式檢查" >> $GITHUB_STEP_SUMMARY
+          echo "- [x] PR 描述檢查" >> $GITHUB_STEP_SUMMARY
+          echo "- [x] 程式碼格式檢查" >> $GITHUB_STEP_SUMMARY
+          echo "- [x] 建構檢查" >> $GITHUB_STEP_SUMMARY
+          echo "- [x] 單元測試檢查" >> $GITHUB_STEP_SUMMARY
+          echo "- [x] 變更檔案分析" >> $GITHUB_STEP_SUMMARY

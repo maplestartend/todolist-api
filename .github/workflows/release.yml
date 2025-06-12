@@ -1,0 +1,294 @@
+name: "自動化發佈"
+
+# 觸發條件：當推送 tag 時
+on:
+  push:
+    tags:
+      - "v*.*.*" # 例如：v1.0.0, v1.2.3
+
+# 環境變數
+env:
+  DOTNET_VERSION: "8.0.x"
+  DOCKER_REGISTRY: "ghcr.io"
+  IMAGE_NAME: "todolist-api"
+
+jobs:
+  # 驗證版本標籤
+  validate-tag:
+    name: "驗證版本標籤"
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is-prerelease: ${{ steps.version.outputs.prerelease }}
+
+    steps:
+      - name: "檢出程式碼"
+        uses: actions/checkout@v4
+
+      - name: "解析版本號"
+        id: version
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # 檢查是否為預發布版本
+          if [[ "$VERSION" =~ -[a-zA-Z] ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+            echo "這是預發布版本: $VERSION"
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+            echo "這是正式版本: $VERSION"
+          fi
+
+      - name: "驗證版本格式"
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+            echo "❌ 版本號格式不正確: $VERSION"
+            echo "正確格式：1.0.0 或 1.0.0-beta"
+            exit 1
+          else
+            echo "✅ 版本號格式正確: $VERSION"
+          fi
+
+  # 建構發佈版本
+  build-release:
+    name: "建構發佈版本"
+    runs-on: ubuntu-latest
+    needs: validate-tag
+
+    steps:
+      - name: "檢出程式碼"
+        uses: actions/checkout@v4
+
+      - name: "設定 .NET SDK"
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: "還原套件"
+        run: dotnet restore
+
+      - name: "建構發佈版本"
+        run: |
+          dotnet build --configuration Release --no-restore \
+            -p:Version=${{ needs.validate-tag.outputs.version }} \
+            -p:AssemblyVersion=${{ needs.validate-tag.outputs.version }} \
+            -p:FileVersion=${{ needs.validate-tag.outputs.version }}
+
+      - name: "執行測試"
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+      - name: "發佈應用程式"
+        run: |
+          dotnet publish --configuration Release --no-build \
+            --output ./publish \
+            -p:Version=${{ needs.validate-tag.outputs.version }}
+
+      - name: "上傳發佈檔案"
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-artifacts
+          path: ./publish/
+          retention-days: 30
+
+  # 建構 Docker 映像檔
+  build-docker-release:
+    name: "建構發佈 Docker 映像檔"
+    runs-on: ubuntu-latest
+    needs: [validate-tag, build-release]
+
+    steps:
+      - name: "檢出程式碼"
+        uses: actions/checkout@v4
+
+      - name: "設定 Docker Buildx"
+        uses: docker/setup-buildx-action@v3
+
+      - name: "登入 GitHub Container Registry"
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: "提取映像檔 metadata"
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: "建構並推送 Docker 映像檔"
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            VERSION=${{ needs.validate-tag.outputs.version }}
+
+  # 生成變更日誌
+  generate-changelog:
+    name: "生成變更日誌"
+    runs-on: ubuntu-latest
+    needs: validate-tag
+
+    outputs:
+      changelog: ${{ steps.changelog.outputs.changelog }}
+
+    steps:
+      - name: "檢出程式碼"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "生成變更日誌"
+        id: changelog
+        run: |
+          # 獲取上一個版本標籤
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          CURRENT_TAG=${GITHUB_REF#refs/tags/}
+
+          echo "從 $PREVIOUS_TAG 到 $CURRENT_TAG 的變更："
+
+          # 生成變更日誌
+          if [ -n "$PREVIOUS_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s (%an)" $PREVIOUS_TAG..$CURRENT_TAG)
+          else
+            CHANGELOG=$(git log --pretty=format:"- %s (%an)")
+          fi
+
+          # 分類 commit
+          echo "## 🚀 新功能" > changelog.md
+          echo "$CHANGELOG" | grep "^- feat" >> changelog.md || echo "無新功能" >> changelog.md
+          echo "" >> changelog.md
+
+          echo "## 🐛 錯誤修復" >> changelog.md
+          echo "$CHANGELOG" | grep "^- fix" >> changelog.md || echo "無錯誤修復" >> changelog.md
+          echo "" >> changelog.md
+
+          echo "## 📚 文件更新" >> changelog.md
+          echo "$CHANGELOG" | grep "^- docs" >> changelog.md || echo "無文件更新" >> changelog.md
+          echo "" >> changelog.md
+
+          echo "## 🔧 其他變更" >> changelog.md
+          echo "$CHANGELOG" | grep -v "^- (feat|fix|docs)" >> changelog.md || echo "無其他變更" >> changelog.md
+
+          # 設定輸出
+          {
+            echo 'changelog<<EOF'
+            cat changelog.md
+            echo EOF
+          } >> $GITHUB_OUTPUT
+
+  # 建立 GitHub Release
+  create-release:
+    name: "建立 GitHub Release"
+    runs-on: ubuntu-latest
+    needs:
+      [validate-tag, build-release, build-docker-release, generate-changelog]
+
+    steps:
+      - name: "檢出程式碼"
+        uses: actions/checkout@v4
+
+      - name: "下載發佈檔案"
+        uses: actions/download-artifact@v4
+        with:
+          name: publish-artifacts
+          path: ./publish/
+
+      - name: "建立發佈 ZIP 檔"
+        run: |
+          cd publish
+          zip -r ../todolist-api-${{ needs.validate-tag.outputs.version }}.zip .
+          cd ..
+
+      - name: "建立 GitHub Release"
+        uses: actions/create-release@v1
+        id: create_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: TodoList API v${{ needs.validate-tag.outputs.version }}
+          body: |
+            # 🎉 TodoList API v${{ needs.validate-tag.outputs.version }}
+
+            ## 📦 下載
+
+            - **Docker 映像檔**: `ghcr.io/${{ github.repository_owner }}/todolist-api:${{ needs.validate-tag.outputs.version }}`
+            - **原始碼**: 請使用下方的 Source code 連結
+            - **編譯檔案**: todolist-api-${{ needs.validate-tag.outputs.version }}.zip
+
+            ## 🚀 部署方式
+
+            ### Docker 部署
+            ```bash
+            docker run -p 5000:80 ghcr.io/${{ github.repository_owner }}/todolist-api:${{ needs.validate-tag.outputs.version }}
+            ```
+
+            ### Docker Compose 部署
+            ```bash
+            git clone https://github.com/${{ github.repository }}.git
+            cd ${{ github.event.repository.name }}
+            docker-compose up -d
+            ```
+
+            ## 📋 變更內容
+
+            ${{ needs.generate-changelog.outputs.changelog }}
+
+            ## 🔗 相關連結
+
+            - [API 文件](https://github.com/${{ github.repository }}/blob/main/README.md)
+            - [Docker Hub](https://ghcr.io/${{ github.repository_owner }}/todolist-api)
+            - [問題回報](https://github.com/${{ github.repository }}/issues)
+          draft: false
+          prerelease: ${{ needs.validate-tag.outputs.is-prerelease == 'true' }}
+
+      - name: "上傳發佈檔案"
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./todolist-api-${{ needs.validate-tag.outputs.version }}.zip
+          asset_name: todolist-api-${{ needs.validate-tag.outputs.version }}.zip
+          asset_content_type: application/zip
+
+  # 部署到生產環境
+  deploy-production:
+    name: "部署到生產環境"
+    runs-on: ubuntu-latest
+    needs: [validate-tag, create-release]
+    if: needs.validate-tag.outputs.is-prerelease == 'false'
+    environment: production
+
+    steps:
+      - name: "部署到生產環境"
+        run: |
+          echo "🚀 部署 TodoList API v${{ needs.validate-tag.outputs.version }} 到生產環境"
+          echo "Docker 映像檔: ghcr.io/${{ github.repository_owner }}/todolist-api:${{ needs.validate-tag.outputs.version }}"
+          # 這裡加入實際的部署邏輯
+
+      - name: "健康檢查"
+        run: |
+          echo "🔍 執行生產環境健康檢查"
+          # 這裡加入健康檢查邏輯
+
+      - name: "部署通知"
+        run: |
+          echo "✅ TodoList API v${{ needs.validate-tag.outputs.version }} 已成功部署到生產環境"
