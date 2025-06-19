@@ -14,6 +14,7 @@ using TodoListApi.Models;                           // 模型類別
 using TodoListApi.Services;                         // 服務層類別
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -998,13 +999,42 @@ app.MapGet("/", () => Results.Redirect("/swagger"))
     .ExcludeFromDescription(); // 從 Swagger 文件中排除
 
 // 健康檢查端點（不在 Swagger 文件中顯示）
-app.MapGet("/health", () => Results.Ok(new { 
-    status = "healthy", 
-    timestamp = DateTime.UtcNow,
-    service = "TodoListApi",
-    version = "1.0.0"
-}))
+// 用於防止 Supabase 休眠，透過簡單的資料庫查詢保持連線活躍
+app.MapGet("/health", async (TodoDbContext context) =>
+{
+    try
+    {
+        // 執行簡單的資料庫查詢來測試連線並保持活躍
+        var userCount = await context.Users.CountAsync();
+        var todoCount = await context.Todos.CountAsync();
+        
+        return Results.Ok(new { 
+            status = "healthy", 
+            timestamp = DateTime.UtcNow,
+            service = "TodoListApi",
+            version = "1.0.0",
+            database = new {
+                status = "connected",
+                userCount = userCount,
+                todoCount = todoCount,
+                provider = "Supabase PostgreSQL"
+            }
+        });
+    }
+    catch (Exception ex)
+    {
+        return Results.Problem(new ProblemDetails
+        {
+            Title = "健康檢查失敗",
+            Detail = $"資料庫連線失敗: {ex.Message}",
+            Status = 503,
+            Instance = "/health"
+        });
+    }
+})
 .WithName("HealthCheck")
+.WithSummary("系統健康檢查")
+.WithDescription("檢查系統和資料庫狀態，用於監控和防止 Supabase 休眠")
 .ExcludeFromDescription(); // 從 Swagger 文件中排除
 
 
